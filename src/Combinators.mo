@@ -1,4 +1,5 @@
 import Array "mo:base/Array";
+import Iter "mo:base/Iter";
 import List "mo:base/List";
 
 import Parser "Parser";
@@ -48,6 +49,93 @@ module Combinators {
         };
     };
 
+    // If the parser succeeds, the value of r applied with the given function.
+    public func map<T, R, S>(
+        parser : Parser<T, R>,
+        function : R -> S,
+    ) : Parser<T, S> {
+        bind<T, R, S>(
+            parser,
+            func (r : R) {
+                Parser.result(function(r));
+            },
+        );
+    };
+
+    // Ignore-left combinator.
+    // Parses r and then s. Returns the value returned by s.
+    public func right<T, R, S>(
+        parserR : Parser<T, R>,
+        parserS : Parser<T, S>
+    ) : Parser<T, S> {
+        bind<T, R, S>(
+            parserR,
+            func (_ : R) {
+                parserS;
+            },
+        );
+    };
+
+    // Ignore-right combinator.
+    // Parses r and then s. Returns the value returned by r.
+    public func left<T, R, S>(
+        parserR : Parser<T, R>,
+        parserS : Parser<T, S>
+    ) : Parser<T, R> {
+        bind<T, R, R>(
+            parserR,
+            func (r : R) {
+                bind<T, S, R>(
+                    parserS,
+                    func (_ : S) {
+                        Parser.result(r);
+                    },
+                );
+            },
+        );
+    };
+
+    public func default<T, R>(
+        parser : Parser<T, R>,
+        default : R,
+    ) : Parser<T, R> {
+        choose(parser, Parser.result<T, R>(default));
+    };
+
+    public func ignoreMany<T, R>(
+        parser : Parser<T, R>,
+    ) : Parser<T, ()> {
+        default(
+            bind<T, R, ()>(
+                parser,
+                func (_ : R) {
+                    ignoreMany(parser);
+                },
+            ),
+            (),
+        );
+    };
+
+    public func ignoreMany1<T, R>(
+        parser : Parser<T, R>,
+    ) : Parser<T, ()> {
+        right(parser, ignoreMany(parser));
+    };
+
+    public func oneOf<T>(
+        xs : [T],
+        equal : (T, T) -> Bool,
+    ) : Parser<T, T> {
+        satisfy(func(t : T) : Bool {
+            for (x in xs.vals()) {
+                if (equal(x, t)) {
+                    return true;
+                };
+            };
+            false;
+        });
+    };
+
     public module Char {
         type CharParser = Parser<Char, Char>;
 
@@ -74,5 +162,38 @@ module Combinators {
                 'A' <= x and x <= 'Z';
             });
         };
+
+        public func space() : CharParser {
+            oneOf<Char>(
+                [' ', '\t', '\r', '\n'],
+                func (x, y) { x == y },
+            );
+        };
+
+        public func ignoreSpaces<R>(
+            parser : Parser<Char, R>,
+        ) : Parser<Char, R> {
+            right(
+                ignoreMany<Char, Char>(space()),
+                parser,
+            );
+        };
     };
-}
+
+    public module Text {
+        public func text(t : Text) : Parser<Char, Text> {
+            func iter(i : Iter.Iter<Char>) : Parser<Char, Text> {
+                switch (i.next()) {
+                    case (null) { Parser.result(t); };
+                    case (? v)  {
+                        right(
+                            Char.char(v),
+                            iter(i),
+                        );
+                    };
+                };
+            };
+            Char.ignoreSpaces(iter(t.chars()));
+        };
+    };
+};
