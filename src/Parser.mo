@@ -1,25 +1,27 @@
-import Iter "mo:base/Iter";
-import Result "mo:base/Result";
+import List "mo:base/List";
 
-module {
-    public type Parser<T, R> = Iter.Iter<T> -> [(R, Iter.Iter<T>)];
+module Parser {
+    private type List<T> = List.List<T>;
+    public type Parser<T, R> = List<T> -> [(R, List<T>)];
 
     // Succeeds without consuming any of the input, and returns the single result x.
     public func result<T, R>(x : R) : Parser<T, R> {
-        func (i : Iter.Iter<T>) { [(x, i)]; };
+        func (xs : List<T>) { [(x, xs)]; };
     };
 
     // Always fails, regardless of the input.
     public func zero<T, R>() : Parser<T, R> {
-        func (_ : Iter.Iter<T>) { []; };
+        func (_ : List<T>) { []; };
     };
 
     // Successfully consumes the first item if the input is non-empty, and fails otherwise.
     public func item<T>() : Parser<T, T> {
-        func (i : Iter.Iter<T>) {
-            switch (i.next()) {
-                case (null) { [];       };
-                case (? v)  { [(v, i)]; };
+        func (xs : List<T>) {
+            switch(xs) {
+                case (null) { []; };
+                case (? (x, xs)) {
+                    [(x,xs)];
+                };
             };
         };
     };
