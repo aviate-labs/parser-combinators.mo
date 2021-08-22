@@ -1,6 +1,6 @@
 import Array "mo:base/Array";
+import List "mo:base/List";
 
-import List "List";
 import Parser "Parser";
 
 module Combinators {
