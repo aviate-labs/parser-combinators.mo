@@ -25,4 +25,19 @@ module Parser {
             };
         };
     };
+
+    // Tries to apply the parsers in order, until one of them succeeds.
+    public func alt<T, R>(
+        parsers : [Parser<T, R>],
+    ) : Parser<T, R> {
+        func (xs : List<T>) {
+            for (parser in parsers.vals()) {
+                let r = parser(xs);
+                if (r.size() != 0) {
+                    return r;
+                };
+            };
+            [];
+        };
+    };
 };

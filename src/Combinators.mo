@@ -40,7 +40,7 @@ module Combinators {
     // One ... or another.
     public func choose<T, R>(
         parser1 : Parser<T, R>,
-        parser2 : Parser<T, R>
+        parser2 : Parser<T, R>,
     ) : Parser<T, R> {
         func (xs : List<T>) {
             let r = parser1(xs);
@@ -66,7 +66,7 @@ module Combinators {
     // Parses r and then s. Returns the value returned by s.
     public func right<T, R, S>(
         parserR : Parser<T, R>,
-        parserS : Parser<T, S>
+        parserS : Parser<T, S>,
     ) : Parser<T, S> {
         bind<T, R, S>(
             parserR,
@@ -80,7 +80,7 @@ module Combinators {
     // Parses r and then s. Returns the value returned by r.
     public func left<T, R, S>(
         parserR : Parser<T, R>,
-        parserS : Parser<T, S>
+        parserS : Parser<T, S>,
     ) : Parser<T, R> {
         bind<T, R, R>(
             parserR,
@@ -95,11 +95,51 @@ module Combinators {
         );
     };
 
+    // Parses 1 and then 2. Returns the value of 1 prepended to the value of 2 (a list).
+    public func cons<T, R>(
+        parser1 : Parser<T, R>,
+        parser2 : Parser<T, List<R>>,
+    ) : Parser<T, List<R>> {
+        bind(
+            parser1,
+            func (r : R) : Parser<T, List<R>> {
+                bind(
+                    parser2,
+                    func (rs : List<R>) : Parser<T, List<R>> {
+                        Parser.result<T, List<R>>(
+                            List.push(r, rs),
+                        );
+                    },
+                );
+            },
+        );
+    };
+
+    public func pair<T, R, S>(
+        parserR : Parser<T, R>,
+        parserS : Parser<T, S>,
+    ) : Parser<T, (R, S)> {
+        bind(
+            parserR,
+            func (r : R) : Parser<T, (R, S)> {
+                bind(
+                    parserS,
+                    func (s : S) : Parser<T, (R, S)> {
+                        Parser.result((r, s));
+                    },
+                );
+            },
+        );
+    };
+
     public func default<T, R>(
         parser : Parser<T, R>,
         default : R,
     ) : Parser<T, R> {
-        choose(parser, Parser.result<T, R>(default));
+        choose(
+            parser, 
+            Parser.result<T, R>(default),
+        );
     };
 
     public func ignoreMany<T, R>(
@@ -122,6 +162,21 @@ module Combinators {
         right(parser, ignoreMany(parser));
     };
 
+    public func many<T, R>(
+        parser : Parser<T, R>,
+    ) : Parser<T, List<R>> {
+        default(
+            cons(parser, many(parser)),
+            List.nil<R>(),
+        );
+    };
+
+    public func many1<T, R>(
+        parser : Parser<T, R>,
+    ) : Parser<T, List<R>> {
+        cons(parser, many(parser));
+    };
+
     public func oneOf<T>(
         xs : [T],
         equal : (T, T) -> Bool,
@@ -134,6 +189,31 @@ module Combinators {
             };
             false;
         });
+    };
+
+    public func sepBy<T, R, S>(
+        parser : Parser<T, R>,
+        seperator : Parser<T, S>,
+    ) : Parser<T, List<R>> {
+        choose(
+            sepBy1(parser, seperator), 
+            Parser.result<T, List<R>>(List.nil()),
+        );
+    };
+
+    public func sepBy1<T, R, S>(
+        parser : Parser<T, R>,
+        seperator : Parser<T, S>,
+    ) : Parser<T, List<R>> {
+        cons(parser, many(right(seperator, parser)));
+    };
+
+    public func between<T, V, R, W>(
+        parserV : Parser<T, V>,
+        parserR : Parser<T, R>,
+        parserW : Parser<T, W>,
+    ) : Parser<T, R> {
+        right(parserV, left(parserR, parserW));
     };
 
     public module Char {
