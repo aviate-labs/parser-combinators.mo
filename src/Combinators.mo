@@ -73,6 +73,7 @@ module {
         };
     };
 
+    // =>
     public func map<T, A, B>(
         parserA : Parser<T, A>,
         function : A -> B,
@@ -85,46 +86,120 @@ module {
         );
     };
 
+    // >>
+    public func right<T, A, B>(
+        parserA : Parser<T, A>,
+        parserB : Parser<T, B>,
+    ) : Parser<T, B> {
+        bind(
+            parserA,
+            func (_ : A) : Parser<T, B> {
+                parserB;
+            },
+        );
+    };
+
+    // <<
+    public func left<T, A, B>(
+        parserA : Parser<T, A>,
+        parserB : Parser<T, B>,
+    ) : Parser<T, A> {
+        bind(
+            parserA,
+            func (a : A) : Parser<T, A> {
+                bind(
+                    parserB,
+                    func (_ : B) : Parser<T, A> {
+                        Parser.result<T, A>(a);
+                    },
+                );
+            },
+        );
+    };
+
+    // <~>
+    public func cons<T, A>(
+        parserA : Parser<T, A>,
+        parserAs : Parser<T, List<A>>,
+    ) : Parser<T, List<A>> {
+        bind(
+            parserA,
+            func (a : A) : Parser<T, List<A>> {
+                bind(
+                    parserAs,
+                    func (as : List<A>) : Parser<T, List<A>> {
+                        Parser.result<T, List<A>>(List.push(a, as));
+                    },
+                );
+            },
+        );
+    };
+
     // Applies a parser p zero or more times to the input.
     public func many<T, A>(
         parserA : Parser<T, A>,
     ) : Parser<T, List<A>> {
-        func (xs : List<T>) {
-            switch (parserA(xs)) {
-                case (null) { ?(null, xs) };
-                case (? (a, xs)) {
-                    switch (many(parserA)(xs)) {
-                        case (null) { 
-                            ?(?(a, List.nil<A>()), xs);
-                        };
-                        case (? (b, xs)) {
-                            ?(?(a, b), xs);
-                        };
-                    }
-                };
-            };
-        };
+        choose(
+            // Same as <~> parserA (many parserA), but not 
+            // possible because of recursive call.
+            bind(
+                parserA,
+                func (a : A) : Parser<T, List<A>> {
+                    bind(
+                        many(parserA),
+                        func (as : List<A>) : Parser<T, List<A>> {
+                            Parser.result<T, List<A>>(List.push(a, as));
+                        },
+                    );
+                },
+            ),
+            Parser.result<T, List<A>>(List.nil()),
+        );
     };
 
     // Non-empty sequences of items.
     public func many1<T, A>(
         parserA : Parser<T, A>,
     ) : Parser<T, List<A>> {
-        func (xs : List<T>) {
-            switch (parserA(xs)) {
-                case (null) { null; };
-                case (? (a, xs)) {
-                    switch (many(parserA)(xs)) {
-                        case (null) { 
-                            ?(?(a, List.nil<A>()), List.nil<T>());
-                        };
-                        case (? (b, xs)) {
-                            ?(?(a, b), xs);
-                        };
-                    }
-                };
-            };
-        };
+        cons(
+            parserA, 
+            many(parserA),
+        );
+    };
+
+    // Recognises non-empty sequences of a given parser p, but different in that the instances of p are separated by a 
+    // parser sep whose result values are ignored.
+    public func sepBy1<T, A, B>(
+        parserA : Parser<T, A>,
+        parserB : Parser<T, B>, // sep
+    ) : Parser<T, List<A>> {
+        cons(
+            parserA, 
+            many(right(parserB, parserA)),
+        );
+    };
+
+    // Bracketing of parsers by other parsers whose results are ignored.
+    public func bracket<T, A, B, C>(
+        parserA : Parser<T, A>, // left bracket
+        parserB : Parser<T, B>,
+        parserC : Parser<T, C>, // right bracket
+    ) : Parser<T, B> {
+        right(
+            parserA, 
+            left(parserB, parserC),
+        );
+    };
+
+    // Parses sequences of a given parser p, separated by a parser sep whose result values are ignored.
+    public func sepBy<T, A, B>(
+        parserA : Parser<T, A>,
+        parserB : Parser<T, B>, // sep
+    ) : Parser<T, List<A>> {
+        choose(
+            sepBy1(parserA, parserB),
+            Parser.result<T, List<A>>(List.nil()),
+        );
     };
 
     public module Character {
