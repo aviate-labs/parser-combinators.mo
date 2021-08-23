@@ -4,6 +4,10 @@ import List "mo:base/List";
 module {
     private type List<T> = List.List<T>;
 
+    public func fromText(t : Text) : List<Char> {
+        fromIter(t.chars());
+    };
+
     public func fromIter<T>(i : Iter.Iter<T>) : List<T> {
         switch (i.next()) {
             case (null) { null; };

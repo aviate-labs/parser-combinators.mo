@@ -1,6 +1,10 @@
+import Char "mo:base/Char";
 import List "mo:base/List";
+import Nat32 "mo:base/Nat32";
 
 import Parser "Parser";
+
+import D "mo:base/Debug";
 
 module {
     private type List<T> = List.List<T>;
@@ -69,6 +73,18 @@ module {
         };
     };
 
+    public func map<T, A, B>(
+        parserA : Parser<T, A>,
+        function : A -> B,
+    ) : Parser<T, B>{
+        bind(
+            parserA,
+            func (a : A) : Parser<T, B> {
+                Parser.result<T, B>(function(a));
+            },
+        );
+    };
+
     // Applies a parser p zero or more times to the input.
     public func many<T, A>(
         parserA : Parser<T, A>,
@@ -111,7 +127,7 @@ module {
         };
     };
 
-    module Char {
+    public module Character {
         private type CharParser = Parser<Char, Char>;
 
         public func char(x : Char) : CharParser {
@@ -145,11 +161,47 @@ module {
         };
     };
 
-    module Text {
+    public module Text {
         private type StringParser = Parser<Char, List<Char>>;
 
         public func word() : StringParser {
-            many(Char.letter());
+            many(Character.letter());
+        };
+    };
+
+    public module Nat {
+        func toNat(xs : List<Char>) : Nat {
+            let ord0 = Char.toNat32('0');
+            let n = List.foldLeft<Char, Nat>(
+                xs,
+                0,
+                func (n : Nat, c : Char) : Nat {
+                    10 * n + Nat32.toNat((Char.toNat32(c) - ord0));
+                },
+            );
+            n;
+        };
+
+        public func nat() : Parser<Char, Nat> {
+            map(
+                many1(Character.digit()),
+                toNat,
+            );
+        };
+    };
+
+    public module Int {
+        public func int() : Parser<Char, Int> {
+            func (xs : List<Char>) {
+                let (op, ys) = switch(Character.char('-')(xs)) {
+                    case (null)      { (func (n : Nat) : Int {  n; }, xs); };
+                    case (? (_, xs)) { (func (n : Nat) : Int { -n; }, xs); };
+                };
+                map<Char, Nat, Int>(
+                    Nat.nat(),
+                    op,
+                )(ys);
+            }
         };
     };
 };
