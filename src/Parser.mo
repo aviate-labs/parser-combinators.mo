@@ -25,4 +25,11 @@ module Parser {
             };
         };
     };
+
+    // Delays the recursion.
+    public func delay<T, A>(
+        function : () -> Parser<T, A>,
+    ) : Parser<T, A> {
+        func (xs : List<T>) { function()(xs); };
+    };
 };

@@ -1,14 +1,17 @@
 import Char "mo:base/Char";
+import Iter "mo:base/Iter";
 import List "mo:base/List";
 import Nat32 "mo:base/Nat32";
+import Text "mo:base/Text";
 
-import Parser "Parser";
+import P "Parser";
+import L "List";
 
 import D "mo:base/Debug";
 
 module {
     private type List<T> = List.List<T>;
-    private type Parser<T, A> = Parser.Parser<T, A>;
+    private type Parser<T, A> = P.Parser<T, A>;
 
     // Integrates the sequencing of parsers with the processing of their result values.
     public func bind<T, A, B>(
@@ -36,7 +39,7 @@ module {
                 bind(
                     parserB,
                     func (b : B) : Parser<T, (A, B)> { 
-                        Parser.result((a, b));
+                        P.result((a, b));
                     },
                 );
             },
@@ -48,12 +51,12 @@ module {
         ok : T -> Bool,
     ) : Parser<T, T> {
         bind(
-            Parser.item<T>(),
+            P.item<T>(),
             func (t : T) : Parser<T, T> {
                 if (ok(t)) {
-                    return Parser.result(t);
+                    return P.result(t);
                 };
-                Parser.zero();
+                P.zero();
             },
         );
     };
@@ -81,7 +84,7 @@ module {
         bind(
             parserA,
             func (a : A) : Parser<T, B> {
-                Parser.result<T, B>(function(a));
+                P.result<T, B>(function(a));
             },
         );
     };
@@ -110,7 +113,7 @@ module {
                 bind(
                     parserB,
                     func (_ : B) : Parser<T, A> {
-                        Parser.result<T, A>(a);
+                        P.result<T, A>(a);
                     },
                 );
             },
@@ -128,7 +131,7 @@ module {
                 bind(
                     parserAs,
                     func (as : List<A>) : Parser<T, List<A>> {
-                        Parser.result<T, List<A>>(List.push(a, as));
+                        P.result<T, List<A>>(List.push(a, as));
                     },
                 );
             },
@@ -148,12 +151,12 @@ module {
                     bind(
                         many(parserA),
                         func (as : List<A>) : Parser<T, List<A>> {
-                            Parser.result<T, List<A>>(List.push(a, as));
+                            P.result<T, List<A>>(List.push(a, as));
                         },
                     );
                 },
             ),
-            Parser.result<T, List<A>>(List.nil()),
+            P.result<T, List<A>>(List.nil()),
         );
     };
 
@@ -198,8 +201,22 @@ module {
     ) : Parser<T, List<A>> {
         choose(
             sepBy1(parserA, parserB),
-            Parser.result<T, List<A>>(List.nil()),
+            P.result<T, List<A>>(List.nil()),
         );
+    };
+
+    public func oneOf<T, A>(
+        parsers : [Parser<T, A>],
+    ) : Parser<T, A> {
+        func (xs : List<T>) {
+            for (parser in parsers.vals()) {
+                switch (parser(xs)) {
+                    case (? v) { return ?v; };
+                    case (_) {};
+                };
+            };
+            null;
+        };
     };
 
     public module Character {
@@ -234,13 +251,48 @@ module {
         public func alphanum() : CharParser {
             choose(letter(), digit());
         };
+
+        public func oneOf(
+            xs : [Char]
+        ) : CharParser {
+            sat(func(c : Char) : Bool {
+                for (x in xs.vals()) {
+                    if (c == x) { return true; };
+                };
+                false;
+            });
+        };
+
+        public func space() : CharParser {
+            oneOf([' ', '\n', '\t', '\r']);
+        };
     };
 
-    public module Text {
-        private type StringParser = Parser<Char, List<Char>>;
+    public module String {
+        private type StringParser = Parser<Char, Text>;
 
         public func word() : StringParser {
-            many(Character.letter());
+            map(
+                many(Character.letter()),
+                func (xs : List<Char>) : Text {
+                    Text.fromIter(L.toIter(xs));
+                },
+            );
+        };
+
+        public func string(t : Text) : StringParser {
+            func iter(i : Iter.Iter<Char>) : StringParser {
+                switch (i.next()) {
+                    case (null) { P.result(t); };
+                    case (? v)  {
+                        right(
+                            Character.char(v),
+                            iter(i),
+                        );
+                    };
+                };
+            };
+            iter(t.chars());
         };
     };
 
