@@ -219,6 +219,14 @@ module {
         };
     };
 
+    public func count<T, A>(
+        parserA : Parser<T, A>,
+        n : Nat,
+    ) : Parser<T, List<A>> {
+        if (0 < n) { cons(parserA, count(parserA, n - 1 : Nat)); }
+        else { P.result(List.nil()); };
+    };
+
     public module Character {
         private type CharParser = Parser<Char, Char>;
 
@@ -229,6 +237,14 @@ module {
         public func digit() : CharParser {
             sat(func (x : Char) : Bool {
                 '0' <= x and x <= '9';
+            });
+        };
+
+        public func hex() : CharParser {
+            sat(func (x : Char) : Bool {
+                '0' <= x and x <= '9' or
+                'a' <= x and x <= 'f' or
+                'A' <= x and x <= 'A';
             });
         };
 
