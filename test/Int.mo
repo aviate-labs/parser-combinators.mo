@@ -1,9 +1,7 @@
-import List "mo:base/List";
+import List "mo:base-0.7.3/List";
 
 import C "../src/Combinators";
 import L "../src/List";
-
-import D "mo:base/Debug";
 
 let int = C.Int.int();
 switch (int(L.fromText("-100"))) {

@@ -1,13 +1,11 @@
-import Char "mo:base/Char";
-import Iter "mo:base/Iter";
-import List "mo:base/List";
-import Nat32 "mo:base/Nat32";
-import Text "mo:base/Text";
+import Char "mo:base-0.7.3/Char";
+import Iter "mo:base-0.7.3/Iter";
+import List "mo:base-0.7.3/List";
+import Nat32 "mo:base-0.7.3/Nat32";
+import Text "mo:base-0.7.3/Text";
 
 import P "Parser";
 import L "List";
-
-import D "mo:base/Debug";
 
 module {
     private type List<T> = List.List<T>;
