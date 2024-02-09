@@ -3,6 +3,8 @@ import Iter "mo:base-0.7.3/Iter";
 import List "mo:base-0.7.3/List";
 import Nat32 "mo:base-0.7.3/Nat32";
 import Text "mo:base-0.7.3/Text";
+import F "mo:base-0.7.3/Float";
+import Debug "mo:base-0.7.3/Debug";
 
 import P "Parser";
 import L "List";
@@ -343,6 +345,86 @@ module {
                     op,
                 )(ys);
             }
+        };
+    };
+
+    public module Float {
+        private func parseNat(t: Text): Nat {
+            var result = 0;
+            for (d in Text.toIter(t)) {
+                result += Nat32.toNat(Char.toNat32(d) - Char.toNat32('0'));
+                result *= 10;
+            };
+            result;
+        };
+
+        public func nonNegativeFraction() : Parser<Char, Float> {
+            func (input: List<Char>): ?(Float, List<Char>) {
+                let wf = seq(
+                    Nat.nat(),
+                    choose<Char, Text>(
+                        bind(
+                            seq(
+                                Character.char('.'),
+                                many1(Character.digit()),
+                            ),
+                            func (p: (Char, List<Char>)): Parser<Char, Text> {
+                                P.result(Text.fromIter(List.toIter(p.1)))
+                            }
+                        ),
+                        P.result("0"),
+                    )
+                )(input);
+                let ?((w: Nat, f: Text), rest) = wf else {
+                    return null;
+                };
+                let f2 = parseNat(f) else {
+                    Debug.trap("parser-combinators: programming error");
+                };
+                // Debug.print(debug_show(w) # "~" # debug_show(f2) # "~" # debug_show(10**(Text.size(f)+1)));
+                ?(F.fromInt(w) + F.fromInt(f2) / F.fromInt(10**(Text.size(f)+1)), rest);
+            };
+        };
+
+        public func fraction() : Parser<Char, Float> {
+            func (xs : List<Char>) {
+                let (op, ys) = switch(Character.char('-')(xs)) {
+                    case (null)      { (func (n : Float) : Float {  n; }, xs); };
+                    case (? (_, xs)) { (func (n : Float) : Float { -n; }, xs); };
+                };
+                map(
+                    Float.nonNegativeFraction(),
+                    op,
+                )(ys);
+            }
+        };
+
+        public func float(): Parser<Char, Float> {
+            func (xs : List<Char>): ?(Float, List<Char>) {
+                let r0 = seq(
+                    Int.int(),
+                    sat<Char>(func (x : Char) : Bool {
+                        x == 'e' or x == 'E' or x == '.';
+                    }),
+                )(xs);
+                if (r0 == null) {
+                    return null; // It's Int
+                };
+
+                let r = seq(
+                    Float.fraction(),
+                    seq(
+                        sat<Char>(func (x : Char) : Bool {
+                            x == 'e' or x == 'E';
+                        }),
+                        Int.int(),
+                    ),
+                )(xs);
+                let ?((n, (_, e)), rest) = r else {
+                    return Float.fraction()(xs);
+                };
+                ?(n * 10**F.fromInt(e), rest);
+            };
         };
     };
 };
