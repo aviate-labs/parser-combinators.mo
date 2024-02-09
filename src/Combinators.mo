@@ -410,5 +410,23 @@ module {
                 )(ys);
             }
         };
+
+        public func float(): Parser<Char, Float> {
+            func (xs : List<Char>): ?(Float, List<Char>) {
+                let r = seq(
+                    Float.fraction(),
+                    seq(
+                        sat<Char>(func (x : Char) : Bool {
+                            x == 'e' or x == 'E';
+                        }),
+                        Int.int(),
+                    ),
+                )(xs);
+                let ?((n, (_, e)), rest) = r else {
+                    return Float.fraction()(xs);
+                };
+                ?(n * 10**F.fromInt(e), rest);
+            };
+        };
     };
 };
