@@ -348,7 +348,7 @@ module {
         };
     };
 
-    public module NonNegativeFloat {
+    public module Float {
         // func toFloat(xs : List<Char>) : Nat {
         //     let ord0 = Char.toNat32('0');
         //     let n = List.foldLeft<Char, Nat>(
@@ -370,7 +370,7 @@ module {
             result;
         };
 
-        public func readFraction() : Parser<Char, Float> {
+        public func nonNegativeFraction() : Parser<Char, Float> {
             func (input: List<Char>): ?(Float, List<Char>) {
                 let wf = seq(
                     Nat.nat(),
@@ -393,26 +393,22 @@ module {
                 let f2 = parseNat(f) else {
                     Debug.trap("parser-combinators: programming error");
                 };
-                ?(F.fromInt(w) + F.fromInt(f2) / F.fromInt(10**Text.size(f)), rest);
+                // Debug.print(debug_show(w) # "~" # debug_show(f2) # "~" # debug_show(10**(Text.size(f)+1)));
+                ?(F.fromInt(w) + F.fromInt(f2) / F.fromInt(10**(Text.size(f)+1)), rest);
             };
         };
 
-        // public func float() : Parser<Char, Float> {
-        // };
-    };
-
-    public module Float {
-        // public func float() : Parser<Char, Float> {
-        //     func (xs : List<Char>) {
-        //         let (op, ys) = switch(Character.char('-')(xs)) {
-        //             case (null)      { (func (n : Float) : Int {  n; }, xs); };
-        //             case (? (_, xs)) { (func (n : Float) : Int { -n; }, xs); };
-        //         };
-        //         map<Char, NonNegativeFloat, Float>(
-        //             Nat.nat(),
-        //             op,
-        //         )(ys);
-        //     }
-        // };
+        public func fraction() : Parser<Char, Float> {
+            func (xs : List<Char>) {
+                let (op, ys) = switch(Character.char('-')(xs)) {
+                    case (null)      { (func (n : Float) : Float {  n; }, xs); };
+                    case (? (_, xs)) { (func (n : Float) : Float { -n; }, xs); };
+                };
+                map(
+                    Float.nonNegativeFraction(),
+                    op,
+                )(ys);
+            }
+        };
     };
 };
