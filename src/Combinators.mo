@@ -3,6 +3,8 @@ import Iter "mo:base-0.7.3/Iter";
 import List "mo:base-0.7.3/List";
 import Nat32 "mo:base-0.7.3/Nat32";
 import Text "mo:base-0.7.3/Text";
+import F "mo:base-0.7.3/Float";
+import Debug "mo:base-0.7.3/Debug";
 
 import P "Parser";
 import L "List";
@@ -344,5 +346,73 @@ module {
                 )(ys);
             }
         };
+    };
+
+    public module NonNegativeFloat {
+        // func toFloat(xs : List<Char>) : Nat {
+        //     let ord0 = Char.toNat32('0');
+        //     let n = List.foldLeft<Char, Nat>(
+        //         xs,
+        //         0,
+        //         func (n : Nat, c : Char) : Nat {
+        //             10 * n + Nat32.toNat((Char.toNat32(c) - ord0));
+        //         },
+        //     );
+        //     n;
+        // };
+
+        private func parseNat(t: Text): Nat {
+            var result = 0;
+            for (d in Text.toIter(t)) {
+                result += Nat32.toNat(Char.toNat32(d) - Char.toNat32('0'));
+                result *= 10;
+            };
+            result;
+        };
+
+        public func readFraction() : Parser<Char, Float> {
+            func (input: List<Char>): ?(Float, List<Char>) {
+                let wf = seq(
+                    Nat.nat(),
+                    choose<Char, Text>(
+                        bind(
+                            seq(
+                                Character.char('.'),
+                                many1(Character.digit()),
+                            ),
+                            func (p: (Char, List<Char>)): Parser<Char, Text> {
+                                P.result(Text.fromIter(List.toIter(p.1)))
+                            }
+                        ),
+                        P.result("0"),
+                    )
+                )(input);
+                let ?((w: Nat, f: Text), rest) = wf else {
+                    return null;
+                };
+                let f2 = parseNat(f) else {
+                    Debug.trap("parser-combinators: programming error");
+                };
+                ?(F.fromInt(w) + F.fromInt(f2) / F.fromInt(10**Text.size(f)), rest);
+            };
+        };
+
+        // public func float() : Parser<Char, Float> {
+        // };
+    };
+
+    public module Float {
+        // public func float() : Parser<Char, Float> {
+        //     func (xs : List<Char>) {
+        //         let (op, ys) = switch(Character.char('-')(xs)) {
+        //             case (null)      { (func (n : Float) : Int {  n; }, xs); };
+        //             case (? (_, xs)) { (func (n : Float) : Int { -n; }, xs); };
+        //         };
+        //         map<Char, NonNegativeFloat, Float>(
+        //             Nat.nat(),
+        //             op,
+        //         )(ys);
+        //     }
+        // };
     };
 };
