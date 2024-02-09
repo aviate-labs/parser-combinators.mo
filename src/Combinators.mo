@@ -349,18 +349,6 @@ module {
     };
 
     public module Float {
-        // func toFloat(xs : List<Char>) : Nat {
-        //     let ord0 = Char.toNat32('0');
-        //     let n = List.foldLeft<Char, Nat>(
-        //         xs,
-        //         0,
-        //         func (n : Nat, c : Char) : Nat {
-        //             10 * n + Nat32.toNat((Char.toNat32(c) - ord0));
-        //         },
-        //     );
-        //     n;
-        // };
-
         private func parseNat(t: Text): Nat {
             var result = 0;
             for (d in Text.toIter(t)) {
