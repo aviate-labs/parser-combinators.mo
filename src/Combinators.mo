@@ -401,6 +401,16 @@ module {
 
         public func float(): Parser<Char, Float> {
             func (xs : List<Char>): ?(Float, List<Char>) {
+                let r0 = seq(
+                    Int.int(),
+                    sat<Char>(func (x : Char) : Bool {
+                        x == 'e' or x == 'E' or x == '.';
+                    }),
+                )(xs);
+                if (r0 == null) {
+                    return null; // It's Int
+                };
+
                 let r = seq(
                     Float.fraction(),
                     seq(
